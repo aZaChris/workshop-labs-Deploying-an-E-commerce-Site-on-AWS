@@ -1,12 +1,12 @@
 # AWS E-commerce Workshop
 The "AWS E-commerce Workshop" is a hands-on lab focused on building a scalable cloud infrastructure for an e-commerce application using AWS. The primary objective is to learn how to create and manage key components such as a Virtual Private Cloud (VPC), subnets, Internet Gateways, EC2 instances, security groups, and S3 storage configuration. This project enables participants to gain essential skills for designing secure, efficient, and optimized cloud architectures for web applications, providing a solid foundation for implementing real-world e-commerce solutions.
 
+![Piano_a_mente (1)](https://github.com/user-attachments/assets/f0ff11ea-f143-4bba-a4c5-5e7547ba98ef)
+
 ## Step 1: Network Foundation
 
 ### Overview
 In this lab, we'll create the network infrastructure for your e-commerce application, including a VPC, subnet, and Internet Gateway in the Frankfurt region.
-
-![Piano_a_mente (1)](https://github.com/user-attachments/assets/f0ff11ea-f143-4bba-a4c5-5e7547ba98ef)
 
 ### Step-by-Step Instructions
 
