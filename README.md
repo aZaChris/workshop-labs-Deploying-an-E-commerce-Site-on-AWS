@@ -1,6 +1,7 @@
 # AWS E-commerce Workshop
+The "AWS E-commerce Workshop" is a hands-on lab focused on building a scalable cloud infrastructure for an e-commerce application using AWS. The primary objective is to learn how to create and manage key components such as a Virtual Private Cloud (VPC), subnets, Internet Gateways, EC2 instances, security groups, and S3 storage configuration. This project enables participants to gain essential skills for designing secure, efficient, and optimized cloud architectures for web applications, providing a solid foundation for implementing real-world e-commerce solutions.
 
-## Lab 1: Network Foundation
+## Step 1: Network Foundation
 
 ### Overview
 In this lab, we'll create the network infrastructure for your e-commerce application, including a VPC, subnet, and Internet Gateway in the Frankfurt region.
@@ -97,7 +98,7 @@ aws ec2 attach-internet-gateway \
 aws ec2 describe-internet-gateways --internet-gateway-ids $IGW_ID
 ```
 
-## Lab 2: Security Configuration
+## Step 2: Security Configuration
 
 ### Overview
 Configure security groups and network access controls for your e-commerce infrastructure.
@@ -158,7 +159,7 @@ aws ec2 describe-security-group-rules \
     --filters Name=group-id,Values=$SG_ID
 ```
 
-## Lab 3: EC2 Instance Setup
+## Step 3: EC2 Instance Setup
 
 ### Overview
 Deploy and configure the EC2 instance that will host your e-commerce application.
@@ -239,7 +240,7 @@ PUBLIC_IP=$(aws ec2 describe-addresses \
 ssh -i "ecommerce-key.pem" ec2-user@$PUBLIC_IP
 ```
 
-## Lab 4: S3 Storage Configuration
+## Step 4: S3 Storage Configuration
 
 ### Overview
 Set up S3 storage for your website files and configure necessary permissions.
@@ -331,7 +332,7 @@ aws iam get-role --role-name ecommerce-ec2-role
 aws iam get-role-policy --role-name ecommerce-ec2-role --policy-name S3Access
 ```
 
-## Lab 5: Website Deployment
+## Step 5: Website Deployment
 
 ### Overview
 Deploy the e-commerce website to your EC2 instance and configure the web server.
