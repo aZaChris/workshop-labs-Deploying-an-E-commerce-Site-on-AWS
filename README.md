@@ -4,8 +4,6 @@ The "AWS E-commerce Workshop" is a hands-on lab focused on building a scalable c
 
 ![Piano_a_mente (1)](https://github.com/user-attachments/assets/f0ff11ea-f143-4bba-a4c5-5e7547ba98ef)
 
-<span style="color: purple">
-
 
 ## Step 1: Network Foundation
 
@@ -17,7 +15,7 @@ In this lab, we'll create the network infrastructure for your e-commerce applica
 1. **Create VPC**
    - Navigate to VPC Dashboard in AWS Console
    - Click "Create VPC"
-   - Enter CIDR block 10.0.0.0/16
+   - Enter CIDR block 10.0.0.0/26
    - Enable DNS hostnames
    - Add tag: Name=ecommerce-vpc
 
@@ -101,7 +99,7 @@ aws ec2 attach-internet-gateway \
 ```bash
 aws ec2 describe-internet-gateways --internet-gateway-ids $IGW_ID
 ```
-</span>
+
 
 ## Step 2: Security Configuration
 
