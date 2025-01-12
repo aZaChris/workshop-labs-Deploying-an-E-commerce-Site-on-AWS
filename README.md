@@ -3,12 +3,6 @@ The "AWS E-commerce Workshop" is a hands-on lab focused on building a scalable c
 
 ![Piano_a_mente (1)](https://github.com/user-attachments/assets/f0ff11ea-f143-4bba-a4c5-5e7547ba98ef)
 
-<div style="border-left: 4px solid #4a90e2; background-color: #f4f8fb; padding: 10px; border-radius: 5px;">
-  <strong>💡 Info:</strong> Si applica per evitare exploit su un dispositivo della rete tramite le fragilità di strutture organizzative non definite. 
-  Infatti risulta necessaria almeno una divisione in Developer o Operatore, Admin e Root per garantire anche il principio del minimo privilegio.
-</div>
-
-
 ## Step 1: Network Foundation
 
 ### Overview
