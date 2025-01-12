@@ -4,6 +4,8 @@ The "AWS E-commerce Workshop" is a hands-on lab focused on building a scalable c
 
 ![Piano_a_mente (1)](https://github.com/user-attachments/assets/f0ff11ea-f143-4bba-a4c5-5e7547ba98ef)
 
+<div style="background-color: #6B46C1; color: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
+<div style="background-color: rgba(0, 0, 0, 0.3); padding: 15px; border-radius: 6px; margin: 10px 0;">
 
 ## Step 1: Network Foundation
 
@@ -162,6 +164,12 @@ aws ec2 describe-security-group-rules \
     --filters Name=group-id,Values=$SG_ID
 ```
 
+</div>
+</div>
+
+<div style="background-color: #ED8936; color: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
+<div style="background-color: rgba(0, 0, 0, 0.3); padding: 15px; border-radius: 6px; margin: 10px 0;">
+
 ## Step 3: EC2 Instance Setup
 
 ### Overview
@@ -242,6 +250,12 @@ PUBLIC_IP=$(aws ec2 describe-addresses \
 # Test SSH connection
 ssh -i "ecommerce-key.pem" ec2-user@$PUBLIC_IP
 ```
+
+</div>
+</div>
+
+<div style="background-color: #438a26; color: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
+<div style="background-color: rgba(0, 0, 0, 0.3); padding: 15px; border-radius: 6px; margin: 10px 0;">
 
 ## Step 4: S3 Storage Configuration
 
@@ -336,7 +350,6 @@ aws iam get-role-policy --role-name ecommerce-ec2-role --policy-name S3Access
 ```
 
 ## Step 5: Website Deployment
-
 ### Overview
 Deploy the e-commerce website to your EC2 instance and configure the web server.
 
@@ -403,8 +416,10 @@ curl -I http://$PUBLIC_IP
 ssh -i "ecommerce-key.pem" ec2-user@$PUBLIC_IP 'sudo tail /var/log/httpd/error_log'
 ```
 
-## Final Validation
+</div>
+</div>
 
+## Final Validation
 ### Overview
 Perform comprehensive testing of the entire setup.
 
@@ -446,7 +461,6 @@ curl http://$PUBLIC_IP/info.php
 ```
 
 ## Troubleshooting Guide
-
 ### Common Issues and Solutions
 
 1. **Cannot Connect to EC2**
@@ -483,7 +497,6 @@ aws iam simulate-principal-policy \
 ```
 
 ## Clean Up Instructions
-
 ### Overview
 Remove all created resources to avoid unwanted charges.
 
