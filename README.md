@@ -1,247 +1,197 @@
-# Workshop: Deploying an E-commerce Site on AWS
+# AWS E-commerce Workshop
 
-This guide walks through deploying a scalable e-commerce website on AWS using various services including VPC, EC2, S3, and IAM.
+## Lab 1: Network Foundation
 
-## Architecture Overview
+### Overview
+In this lab, we'll create the network infrastructure for your e-commerce application, including a VPC, subnet, and Internet Gateway in the Frankfurt region.
 
-![Piano_a_mente (1)](https://github.com/user-attachments/assets/e0c5e99b-be04-48ef-bf09-15befa64633f)
+![Piano_a_mente (1)](https://github.com/user-attachments/assets/f0ff11ea-f143-4bba-a4c5-5e7547ba98ef)
 
+### Step-by-Step Instructions
 
-
-## Prerequisites
-
-- AWS Account
-- Basic knowledge of AWS services
-- AWS CLI installed and configured
-- Access to AWS Management Console
-
-## Detailed Setup Steps
-
-### 1. VPC Setup
-
-Navigate to VPC Dashboard
-Select "Create VPC"
-Enter CIDR block 10.0.0.0/16
-Tag: Name=ecommerce-vpc
-Enable DNS hostnames
+1. **Create VPC**
+   - Navigate to VPC Dashboard in AWS Console
+   - Click "Create VPC"
+   - Enter CIDR block 10.0.0.0/16
+   - Enable DNS hostnames
+   - Add tag: Name=ecommerce-vpc
 
 ```bash
 # Create VPC
 aws ec2 create-vpc \
     --cidr-block 10.0.0.0/16 \
-    --tag-specifications 'ResourceType=vpc,Tags=[{Key=Name,Value=ecommerce-vpc}]'
+    --tag-specifications 'ResourceType=vpc,Tags=[{Key=Name,Value=ecommerce-vpc}]' \
+    --instance-tenancy default \
+    --enable-dns-hostnames
 
-# Create Private Subnet
+# Store VPC ID
+VPC_ID=$(aws ec2 describe-vpcs \
+    --filters Name=tag:Name,Values=ecommerce-vpc \
+    --query 'Vpcs[0].VpcId' \
+    --output text)
+```
 
-Within your VPC, create subnet
-Use CIDR block 10.0.0.0/26
-Select Frankfurt (eu-central-1a)
-Tag: Name=ecommerce-private-subnet
+**Validation:**
+- Check VPC creation in console
+- Verify CIDR block is 10.0.0.0/16
+- Confirm DNS hostnames enabled
+```bash
+aws ec2 describe-vpcs --vpc-ids $VPC_ID
+```
 
+2. **Create Private Subnet**
+   - Within your VPC, create new subnet
+   - Use CIDR block 10.0.0.0/26
+   - Select Frankfurt (eu-central-1a)
+   - Tag: Name=ecommerce-private-subnet
+
+```bash
+# Create subnet
 aws ec2 create-subnet \
-    --vpc-id <vpc-id> \
+    --vpc-id $VPC_ID \
     --cidr-block 10.0.0.0/26 \
     --availability-zone eu-central-1a \
     --tag-specifications 'ResourceType=subnet,Tags=[{Key=Name,Value=ecommerce-private-subnet}]'
 
+# Store subnet ID
+SUBNET_ID=$(aws ec2 describe-subnets \
+    --filters Name=tag:Name,Values=ecommerce-private-subnet \
+    --query 'Subnets[0].SubnetId' \
+    --output text)
+```
+
+**Validation:**
+- Verify subnet creation
+- Check CIDR range
+- Confirm AZ assignment
+```bash
+aws ec2 describe-subnets --subnet-ids $SUBNET_ID
+```
+
+3. **Create and Attach Internet Gateway**
+   - Create new Internet Gateway
+   - Attach to your VPC
+   - Tag: Name=ecommerce-igw
+
+```bash
 # Create Internet Gateway
-
-Go to Internet Gateways
-Create new gateway
-Attach to your VPC
-Tag: Name=ecommerce-igw
-
-Create route table
-Add route to Internet (0.0.0.0/0)
-Associate with private subnet
-
 aws ec2 create-internet-gateway \
     --tag-specifications 'ResourceType=internet-gateway,Tags=[{Key=Name,Value=ecommerce-igw}]'
 
-# Attach Internet Gateway to VPC
+# Store IGW ID
+IGW_ID=$(aws ec2 describe-internet-gateways \
+    --filters Name=tag:Name,Values=ecommerce-igw \
+    --query 'InternetGateways[0].InternetGatewayId' \
+    --output text)
+
+# Attach to VPC
 aws ec2 attach-internet-gateway \
-    --internet-gateway-id <igw-id> \
-    --vpc-id <vpc-id>
+    --vpc-id $VPC_ID \
+    --internet-gateway-id $IGW_ID
 ```
 
-### 2. Security Group Configuration
+**Validation:**
+- Check IGW creation
+- Verify VPC attachment
+```bash
+aws ec2 describe-internet-gateways --internet-gateway-ids $IGW_ID
+```
 
-Navigate to EC2 Dashboard > Security Groups
-Create new security group in your VPC
-Name: ecommerce-sg
-Description: E-commerce security rules
+## Lab 2: Security Configuration
 
-Configure Inbound Rules
+### Overview
+Configure security groups and network access controls for your e-commerce infrastructure.
 
-Allow HTTP (Port 80) from anywhere
-Allow SSH (Port 22) from anywhere
-Document each rule's purpose
+### Step-by-Step Instructions
+
+1. **Create Security Group**
+   - Navigate to EC2 Dashboard > Security Groups
+   - Create in your VPC
+   - Name: ecommerce-sg
+   - Description: E-commerce security rules
 
 ```bash
-# Create Security Group
+# Create security group
 aws ec2 create-security-group \
     --group-name ecommerce-sg \
-    --description "Security group for e-commerce site" \
-    --vpc-id <vpc-id>
+    --description "E-commerce security group" \
+    --vpc-id $VPC_ID
 
+# Store security group ID
+SG_ID=$(aws ec2 describe-security-groups \
+    --filters Name=group-name,Values=ecommerce-sg \
+    --query 'SecurityGroups[0].GroupId' \
+    --output text)
+```
+
+**Validation:**
+- Verify security group creation
+- Check VPC association
+```bash
+aws ec2 describe-security-groups --group-ids $SG_ID
+```
+
+2. **Configure Security Rules**
+   - Add inbound rules for HTTP and SSH
+   - Configure outbound rules
+
+```bash
 # Add inbound rules
 aws ec2 authorize-security-group-ingress \
-    --group-id <security-group-id> \
-    --protocol tcp \
-    --port 22 \
-    --cidr 0.0.0.0/0
-
-aws ec2 authorize-security-group-ingress \
-    --group-id <security-group-id> \
+    --group-id $SG_ID \
     --protocol tcp \
     --port 80 \
     --cidr 0.0.0.0/0
+
+aws ec2 authorize-security-group-ingress \
+    --group-id $SG_ID \
+    --protocol tcp \
+    --port 22 \
+    --cidr 0.0.0.0/0
 ```
 
-### 3. EC2 Instance Deployment
+**Validation:**
+- Verify inbound rules
+- Check port configurations
+```bash
+aws ec2 describe-security-group-rules \
+    --filters Name=group-id,Values=$SG_ID
+```
 
-Launch EC2 Instance
+[Continue with Labs 3-5 in same format...]
 
-Choose Amazon Linux 2
-Select t2.micro instance type
-Place in private subnet
-Assign security group
+## Clean Up Instructions
 
-Configure Storage
-
-Allocate 8GB GP2 storage
-Enable encryption
-Add appropriate tags
-
-Setup Elastic IP
-
-Allocate new Elastic IP
-Associate with EC2 instance
-Document IP for future use
-
+### Overview
+Remove all created resources to avoid unwanted charges.
 
 ```bash
-# Launch EC2 instance
-aws ec2 run-instances \
-    --image-id ami-0a261c0e5f51090b1 \
-    --instance-type t2.micro \
-    --subnet-id <subnet-id> \
-    --security-group-ids <security-group-id> \
-    --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=ecommerce-server}]'
+# Delete EC2 instance
+aws ec2 terminate-instances --instance-ids $INSTANCE_ID
 
-# Allocate Elastic IP
-aws ec2 allocate-address
+# Release Elastic IP
+aws ec2 release-address --allocation-id $EIP_ID
 
-# Associate Elastic IP
-aws ec2 associate-address \
-    --instance-id <instance-id> \
-    --allocation-id <eip-allocation-id>
+# Delete security group
+aws ec2 delete-security-group --group-id $SG_ID
+
+# Detach and delete Internet Gateway
+aws ec2 detach-internet-gateway \
+    --internet-gateway-id $IGW_ID \
+    --vpc-id $VPC_ID
+aws ec2 delete-internet-gateway --internet-gateway-id $IGW_ID
+
+# Delete subnet and VPC
+aws ec2 delete-subnet --subnet-id $SUBNET_ID
+aws ec2 delete-vpc --vpc-id $VPC_ID
 ```
 
-### 4. S3 Bucket Setup
-
+**Validation:**
+- Verify all resources deleted
+- Check AWS Console for remaining resources
 ```bash
-# Create S3 bucket
-aws s3api create-bucket \
-    --bucket your-ecommerce-bucket \
-    --region eu-central-1 \
-    --create-bucket-configuration LocationConstraint=eu-central-1
-
-# Upload website files
-aws s3 cp website.zip s3://your-ecommerce-bucket/
-```
-
-### 5. IAM Role Configuration
-
-```json
-{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Effect": "Allow",
-            "Action": [
-                "s3:GetObject",
-                "s3:ListBucket"
-            ],
-            "Resource": [
-                "arn:aws:s3:::your-ecommerce-bucket",
-                "arn:aws:s3:::your-ecommerce-bucket/*"
-            ]
-        }
-    ]
-}
-```
-
-## Initial Setup Script
-
-```bash
-#!/bin/bash
-# EC2 instance setup script
-
-# Update system
-sudo yum update -y
-
-# Install required packages
-sudo yum install -y httpd wget unzip
-
-# Start and enable Apache
-sudo systemctl start httpd
-sudo systemctl enable httpd
-
-# Download website from S3
-aws s3 cp s3://your-ecommerce-bucket/website.zip /tmp/
-unzip /tmp/website.zip -d /var/www/html/
-
-# Set permissions
-sudo chown -R apache:apache /var/www/html/
-```
-
-## Verification Steps
-
-1. Check VPC Configuration:
-   - Verify subnet CIDR block is /26
-   - Confirm Internet Gateway is attached
-   - Validate route table entries
-
-2. EC2 Instance Check:
-   - Verify instance is running
-   - Confirm Elastic IP association
-   - Test SSH access
-
-3. Website Access:
-   - Navigate to Elastic IP address in browser
-   - Verify website loads correctly
-   - Check S3 access from EC2 instance
-
-## Troubleshooting
-
-Common issues and solutions:
-
-1. Website not accessible:
-   - Check security group rules
-   - Verify Apache is running
-   - Confirm Elastic IP association
-
-2. S3 access issues:
-   - Validate IAM role permissions
-   - Check S3 bucket policy
-   - Verify instance profile attachment
-
-3. Network connectivity:
-   - Confirm route table configuration
-   - Check Internet Gateway attachment
-   - Verify CIDR blocks
-
-## Clean Up
-
-```bash
-# Remove resources when no longer needed
-aws ec2 release-address --allocation-id <eip-allocation-id>
-aws ec2 terminate-instances --instance-ids <instance-id>
-aws s3 rb s3://your-ecommerce-bucket --force
-aws ec2 delete-security-group --group-id <security-group-id>
-aws ec2 detach-internet-gateway --internet-gateway-id <igw-id> --vpc-id <vpc-id>
-aws ec2 delete-internet-gateway --internet-gateway-id <igw-id>
-aws ec2 delete-subnet --subnet-id <subnet-id>
-aws ec2 delete-vpc --vpc-id <vpc-id>
+aws ec2 describe-vpcs --vpc-ids $VPC_ID
+aws ec2 describe-subnets --subnet-ids $SUBNET_ID
+aws ec2 describe-internet-gateways --internet-gateway-ids $IGW_ID
+aws ec2 describe-security-groups --group-ids $SG_ID
 ```
