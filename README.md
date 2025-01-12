@@ -15,7 +15,7 @@ In this lab, we'll create the network infrastructure for your e-commerce applica
 
 ### Step-by-Step Instructions
 
-1. **Create VPC**
+1. **Create VPC** 
    - Navigate to VPC Dashboard in AWS Console
    - Click "Create VPC"
    - Enter CIDR block 10.0.0.0/16
