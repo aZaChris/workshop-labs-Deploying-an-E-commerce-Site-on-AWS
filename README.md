@@ -1,4 +1,8 @@
-# AWS E-commerce Workshop  
+# AWS E-commerce Workshop
+
+> ⚠️ **DISCLAIMER: Only for demo in sandbox environment**
+> This workshop is designed for learning purposes and should only be executed in a sandbox/demo AWS environment. Do not run in production environment BECAUSE IT WILL COST YOU MONEY.
+
 The "AWS E-commerce Workshop" is a hands-on lab focused on building a scalable cloud infrastructure for an e-commerce application using AWS. The primary objective is to learn how to create and manage key components such as a Virtual Private Cloud (VPC), subnets, Internet Gateways, EC2 instances, security groups, and S3 storage configuration. This project enables participants to gain essential skills for designing secure, efficient, and optimized cloud architectures for web applications, providing a solid foundation for implementing real-world e-commerce solutions.
 
 ![Group_78](https://github.com/user-attachments/assets/4a54d053-2232-4a22-9f0e-5e118a3ea2d0)
@@ -11,14 +15,14 @@ The "AWS E-commerce Workshop" is a hands-on lab focused on building a scalable c
 ## Step 1: Network Foundation
 
 ### Overview
-In this lab, we'll create the network infrastructure for your e-commerce application, including a VPC, subnet, and Internet Gateway in the Frankfurt region.
+In this lab, we'll create the network infrastructure for your e-commerce application, including a VPC, subnet, and Internet Gateway in the Ohio region.
 
 ### Step-by-Step Instructions
 
 1. **Create VPC** 
    - Navigate to VPC Dashboard in AWS Console
    - Click "Create VPC"
-   - Enter CIDR block 10.0.0.0/16
+   - Enter CIDR block 10.0.0.0/26
    - Enable DNS hostnames
    - Add tag: Name=ecommerce-vpc
 
@@ -363,24 +367,56 @@ Deploy the e-commerce website to your EC2 instance and configure the web server.
 
 ```bash
 # Connect to instance and run setup
-ssh -i "ecommerce-key.pem" ec2-user@$PUBLIC_IP << 'EOF'
-# Update system
-sudo yum update -y
+### User
+# Execute <Website> with this script
+# Edit before Running >>> <Website>
+# use 2> log.txt for troubleshoot
 
-# Install Apache and PHP
-sudo yum install -y httpd php
+# Sys Update e Cleanse
+sleep 30;
+sudo yum remove -y awscli;
+sleep 2;
+sudo yum update;
+sleep 5;
 
-# Start and enable Apache
-sudo systemctl start httpd
-sudo systemctl enable httpd
+### AWSCLIV2 Install
 
-# Set permissions
-sudo usermod -a -G apache ec2-user
-sudo chown -R ec2-user:apache /var/www
-sudo chmod 2775 /var/www
-find /var/www -type d -exec sudo chmod 2775 {} \;
-find /var/www -type f -exec sudo chmod 0664 {} \;
-EOF
+sudo curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip";
+sleep 2;
+sudo unzip awscliv2.zip;
+sleep 2;
+sudo ./aws/install;
+sleep 2;
+
+### Install and Run WebServer
+
+sudo yum install httpd;
+sleep 2;
+sudo yum install polkit;
+sleep 2;
+sudo systemctl enable httpd;
+sleep 2;
+sudo systemctl start httpd;
+sleep 2;
+sudo chown ec2-user:ec2-user /var/www/html/;
+cd /var/www/html/;
+sleep 5;
+
+### Download WebSite's Files from S3
+
+/usr/local/bin/aws s3 sync s3://<bucketname>/ /var/www/html/;
+sleep 5;
+sudo unzip <Website.zip>;
+sleep 2;
+sudo mv <Website>/* .;
+sleep 2;
+
+# Cleanse var/www/html/
+
+sudo rm -rf <Website.zip>;
+sudo rmdir <Website>;
+
+echo 'Deploy successfull'
 ```
 
 **Validation:**
