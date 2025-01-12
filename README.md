@@ -4,8 +4,8 @@ This guide walks through deploying a scalable e-commerce website on AWS using va
 
 ## Architecture Overview
 
+![Piano_a_mente (1)](https://github.com/user-attachments/assets/e0c5e99b-be04-48ef-bf09-15befa64633f)
 
-<img width="1136" alt="Piano_a_mente" src="https://github.com/user-attachments/assets/b93fefa5-a127-4e26-b1cd-c9d086f5f7b1" />
 
 
 ## Prerequisites
