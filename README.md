@@ -19,6 +19,12 @@ This guide walks through deploying a scalable e-commerce website on AWS using va
 
 ### 1. VPC Setup
 
+Navigate to VPC Dashboard
+Select "Create VPC"
+Enter CIDR block 10.0.0.0/16
+Tag: Name=ecommerce-vpc
+Enable DNS hostnames
+
 ```bash
 # Create VPC
 aws ec2 create-vpc \
@@ -26,6 +32,12 @@ aws ec2 create-vpc \
     --tag-specifications 'ResourceType=vpc,Tags=[{Key=Name,Value=ecommerce-vpc}]'
 
 # Create Private Subnet
+
+Within your VPC, create subnet
+Use CIDR block 10.0.0.0/26
+Select Frankfurt (eu-central-1a)
+Tag: Name=ecommerce-private-subnet
+
 aws ec2 create-subnet \
     --vpc-id <vpc-id> \
     --cidr-block 10.0.0.0/26 \
@@ -33,6 +45,16 @@ aws ec2 create-subnet \
     --tag-specifications 'ResourceType=subnet,Tags=[{Key=Name,Value=ecommerce-private-subnet}]'
 
 # Create Internet Gateway
+
+Go to Internet Gateways
+Create new gateway
+Attach to your VPC
+Tag: Name=ecommerce-igw
+
+Create route table
+Add route to Internet (0.0.0.0/0)
+Associate with private subnet
+
 aws ec2 create-internet-gateway \
     --tag-specifications 'ResourceType=internet-gateway,Tags=[{Key=Name,Value=ecommerce-igw}]'
 
@@ -43,6 +65,17 @@ aws ec2 attach-internet-gateway \
 ```
 
 ### 2. Security Group Configuration
+
+Navigate to EC2 Dashboard > Security Groups
+Create new security group in your VPC
+Name: ecommerce-sg
+Description: E-commerce security rules
+
+Configure Inbound Rules
+
+Allow HTTP (Port 80) from anywhere
+Allow SSH (Port 22) from anywhere
+Document each rule's purpose
 
 ```bash
 # Create Security Group
@@ -66,6 +99,26 @@ aws ec2 authorize-security-group-ingress \
 ```
 
 ### 3. EC2 Instance Deployment
+
+Launch EC2 Instance
+
+Choose Amazon Linux 2
+Select t2.micro instance type
+Place in private subnet
+Assign security group
+
+Configure Storage
+
+Allocate 8GB GP2 storage
+Enable encryption
+Add appropriate tags
+
+Setup Elastic IP
+
+Allocate new Elastic IP
+Associate with EC2 instance
+Document IP for future use
+
 
 ```bash
 # Launch EC2 instance
