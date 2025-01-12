@@ -4,6 +4,9 @@ The "AWS E-commerce Workshop" is a hands-on lab focused on building a scalable c
 
 ![Piano_a_mente (1)](https://github.com/user-attachments/assets/f0ff11ea-f143-4bba-a4c5-5e7547ba98ef)
 
+> :warning: **Step 1: Network Foundation**
+> Contenuto...
+
 <div style="background-color: #6B46C1; color: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
 <div style="background-color: rgba(0, 0, 0, 0.3); padding: 15px; border-radius: 6px; margin: 10px 0;">
 
