@@ -18,7 +18,7 @@ In this lab, we'll create the network infrastructure for your e-commerce applica
 1. **Create VPC**
    - Navigate to VPC Dashboard in AWS Console
    - Click "Create VPC"
-   - Enter CIDR block 10.0.0.0/26
+   - Enter CIDR block 10.0.0.0/16
    - Enable DNS hostnames
    - Add tag: Name=ecommerce-vpc
 
