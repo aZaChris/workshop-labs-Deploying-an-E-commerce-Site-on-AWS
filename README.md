@@ -158,7 +158,325 @@ aws ec2 describe-security-group-rules \
     --filters Name=group-id,Values=$SG_ID
 ```
 
-[Continue with Labs 3-5 in same format...]
+## Lab 3: EC2 Instance Setup
+
+### Overview
+Deploy and configure the EC2 instance that will host your e-commerce application.
+
+### Step-by-Step Instructions
+
+1. **Launch EC2 Instance**
+   - Choose Amazon Linux 2 AMI
+   - Select t2.micro instance type
+   - Place in private subnet
+   - Attach security group
+
+```bash
+# Create key pair for SSH access
+aws ec2 create-key-pair \
+    --key-name ecommerce-key \
+    --query 'KeyMaterial' \
+    --output text > ecommerce-key.pem
+
+chmod 400 ecommerce-key.pem
+
+# Launch EC2 instance
+aws ec2 run-instances \
+    --image-id ami-0a261c0e5f51090b1 \
+    --instance-type t2.micro \
+    --subnet-id $SUBNET_ID \
+    --security-group-ids $SG_ID \
+    --key-name ecommerce-key \
+    --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=ecommerce-server}]'
+
+# Store instance ID
+INSTANCE_ID=$(aws ec2 describe-instances \
+    --filters "Name=tag:Name,Values=ecommerce-server" \
+    --query 'Reservations[0].Instances[0].InstanceId' \
+    --output text)
+```
+
+**Validation:**
+- Verify instance running status
+- Check instance tags
+```bash
+aws ec2 describe-instances --instance-ids $INSTANCE_ID
+```
+
+2. **Configure Elastic IP**
+   - Allocate new Elastic IP
+   - Associate with EC2 instance
+
+```bash
+# Allocate Elastic IP
+aws ec2 allocate-address \
+    --domain vpc
+
+# Store Elastic IP allocation ID
+EIP_ID=$(aws ec2 describe-addresses \
+    --query 'Addresses[-1].AllocationId' \
+    --output text)
+
+# Associate with instance
+aws ec2 associate-address \
+    --instance-id $INSTANCE_ID \
+    --allocation-id $EIP_ID
+```
+
+**Validation:**
+- Check Elastic IP association
+- Test SSH connectivity
+```bash
+aws ec2 describe-addresses --allocation-ids $EIP_ID
+
+# Get public IP
+PUBLIC_IP=$(aws ec2 describe-addresses \
+    --allocation-ids $EIP_ID \
+    --query 'Addresses[0].PublicIp' \
+    --output text)
+
+# Test SSH connection
+ssh -i "ecommerce-key.pem" ec2-user@$PUBLIC_IP
+```
+
+## Lab 4: S3 Storage Configuration
+
+### Overview
+Set up S3 storage for your website files and configure necessary permissions.
+
+### Step-by-Step Instructions
+
+1. **Create S3 Bucket**
+   - Choose unique bucket name
+   - Select Frankfurt region
+   - Configure basic settings
+
+```bash
+# Create S3 bucket
+aws s3api create-bucket \
+    --bucket your-ecommerce-bucket-name \
+    --region eu-central-1 \
+    --create-bucket-configuration LocationConstraint=eu-central-1
+
+# Enable versioning
+aws s3api put-bucket-versioning \
+    --bucket your-ecommerce-bucket-name \
+    --versioning-configuration Status=Enabled
+```
+
+**Validation:**
+- Verify bucket creation
+- Check region setting
+```bash
+aws s3api get-bucket-location --bucket your-ecommerce-bucket-name
+aws s3api get-bucket-versioning --bucket your-ecommerce-bucket-name
+```
+
+2. **Configure IAM Role**
+   - Create role for EC2
+   - Attach S3 access policy
+
+```bash
+# Create IAM role
+cat << EOF > trust-policy.json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "ec2.amazonaws.com"
+      },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+EOF
+
+aws iam create-role \
+    --role-name ecommerce-ec2-role \
+    --assume-role-policy-document file://trust-policy.json
+
+# Create S3 access policy
+cat << EOF > s3-policy.json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetObject",
+                "s3:ListBucket"
+            ],
+            "Resource": [
+                "arn:aws:s3:::your-ecommerce-bucket-name",
+                "arn:aws:s3:::your-ecommerce-bucket-name/*"
+            ]
+        }
+    ]
+}
+EOF
+
+aws iam put-role-policy \
+    --role-name ecommerce-ec2-role \
+    --policy-name S3Access \
+    --policy-document file://s3-policy.json
+```
+
+**Validation:**
+- Check role creation
+- Verify policy attachment
+```bash
+aws iam get-role --role-name ecommerce-ec2-role
+aws iam get-role-policy --role-name ecommerce-ec2-role --policy-name S3Access
+```
+
+## Lab 5: Website Deployment
+
+### Overview
+Deploy the e-commerce website to your EC2 instance and configure the web server.
+
+### Step-by-Step Instructions
+
+1. **Configure Web Server**
+   - Install Apache and PHP
+   - Set up virtual host
+   - Configure permissions
+
+```bash
+# Connect to instance and run setup
+ssh -i "ecommerce-key.pem" ec2-user@$PUBLIC_IP << 'EOF'
+# Update system
+sudo yum update -y
+
+# Install Apache and PHP
+sudo yum install -y httpd php
+
+# Start and enable Apache
+sudo systemctl start httpd
+sudo systemctl enable httpd
+
+# Set permissions
+sudo usermod -a -G apache ec2-user
+sudo chown -R ec2-user:apache /var/www
+sudo chmod 2775 /var/www
+find /var/www -type d -exec sudo chmod 2775 {} \;
+find /var/www -type f -exec sudo chmod 0664 {} \;
+EOF
+```
+
+**Validation:**
+- Check Apache status
+- Verify PHP installation
+```bash
+ssh -i "ecommerce-key.pem" ec2-user@$PUBLIC_IP 'sudo systemctl status httpd'
+```
+
+2. **Deploy Website Files**
+   - Upload files to S3
+   - Download to EC2
+   - Configure website
+
+```bash
+# Upload website files to S3
+aws s3 cp ./website-files s3://your-ecommerce-bucket-name/ --recursive
+
+# Download and deploy on EC2
+ssh -i "ecommerce-key.pem" ec2-user@$PUBLIC_IP << 'EOF'
+aws s3 cp s3://your-ecommerce-bucket-name/ /var/www/html/ --recursive
+sudo systemctl restart httpd
+EOF
+```
+
+**Validation:**
+- Test website access
+- Check error logs
+```bash
+# Check website accessibility
+curl -I http://$PUBLIC_IP
+
+# Check error logs
+ssh -i "ecommerce-key.pem" ec2-user@$PUBLIC_IP 'sudo tail /var/log/httpd/error_log'
+```
+
+## Final Validation
+
+### Overview
+Perform comprehensive testing of the entire setup.
+
+### Validation Steps
+
+1. **Network Connectivity**
+```bash
+# Test VPC connectivity
+aws ec2 describe-vpc-attribute \
+    --vpc-id $VPC_ID \
+    --attribute enableDnsHostnames
+
+# Test subnet routing
+aws ec2 describe-route-tables \
+    --filters "Name=vpc-id,Values=$VPC_ID"
+```
+
+2. **Security Configuration**
+```bash
+# Verify security group rules
+aws ec2 describe-security-group-rules \
+    --filters Name=group-id,Values=$SG_ID
+
+# Check instance security groups
+aws ec2 describe-instance-attribute \
+    --instance-id $INSTANCE_ID \
+    --attribute groupSet
+```
+
+3. **Website Functionality**
+```bash
+# Check HTTP response
+curl -I http://$PUBLIC_IP
+
+# Test PHP functionality
+echo "<?php phpinfo(); ?>" | ssh -i "ecommerce-key.pem" ec2-user@$PUBLIC_IP \
+    'cat > /var/www/html/info.php'
+curl http://$PUBLIC_IP/info.php
+```
+
+## Troubleshooting Guide
+
+### Common Issues and Solutions
+
+1. **Cannot Connect to EC2**
+- Check security group rules
+- Verify Elastic IP association
+- Confirm key pair permissions
+```bash
+aws ec2 describe-instance-attribute \
+    --instance-id $INSTANCE_ID \
+    --attribute groupSet
+```
+
+2. **Website Not Accessible**
+- Check Apache status
+- Verify file permissions
+- Review error logs
+```bash
+ssh -i "ecommerce-key.pem" ec2-user@$PUBLIC_IP << 'EOF'
+sudo systemctl status httpd
+ls -la /var/www/html
+sudo tail /var/log/httpd/error_log
+EOF
+```
+
+3. **S3 Access Issues**
+- Check IAM role
+- Verify bucket policy
+- Test S3 connectivity
+```bash
+aws iam simulate-principal-policy \
+    --policy-source-arn arn:aws:iam::ACCOUNT_ID:role/ecommerce-ec2-role \
+    --action-names s3:GetObject \
+    --resource-arns arn:aws:s3:::your-ecommerce-bucket-name/*
+```
 
 ## Clean Up Instructions
 
