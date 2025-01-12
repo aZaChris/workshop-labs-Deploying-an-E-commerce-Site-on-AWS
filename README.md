@@ -4,17 +4,9 @@ This guide walks through deploying a scalable e-commerce website on AWS using va
 
 ## Architecture Overview
 
-```plaintext
-Internet
-   ↓
-[Internet Gateway]
-   ↓
-[VPC - Frankfurt Region]
-   ↓
-[Private Subnet (/26)]
-   ↓
-[EC2 Instance] ←→ [S3 Bucket]
-```
+
+<img width="1136" alt="Piano_a_mente" src="https://github.com/user-attachments/assets/b93fefa5-a127-4e26-b1cd-c9d086f5f7b1" />
+
 
 ## Prerequisites
 
