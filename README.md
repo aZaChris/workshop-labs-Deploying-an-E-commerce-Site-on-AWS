@@ -392,56 +392,58 @@ aws s3 cp ./website-files s3://your-ecommerce-bucket-name/ --recursive
   ```bash
 #!/bin/bash
 
-### Gyovemi
-# Execute <Website> with this script
-# Edit before Running >>> <Website>
+#!/bin/bash
+
+# Execute ECommerce with this script
+# Edit before Running >>> ECommerce
 # use 2> log.txt for troubleshoot
 
 # Sys Update e Cleanse
-sleep 30;
+echo "Inizio aggiornamento e pulizia del sistema..."
+sleep 10;
 sudo yum remove -y awscli;
 sleep 2;
-sudo yum update;
+sudo yum update -y;
 sleep 5;
 
 ### AWSCLIV2 Install
-
-sudo curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip";
+echo "Installazione di AWS CLI v2..."
+sudo curl -s "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip";
 sleep 2;
-sudo unzip awscliv2.zip;
+sudo unzip -q awscliv2.zip;
 sleep 2;
-sudo ./aws/install;
+yes | sudo ./aws/install;
 sleep 2;
 
 ### Install and Run WebServer
-
-sudo yum install httpd;
+echo "Installazione e configurazione del web server..."
+sudo yum install -y httpd;
 sleep 2;
-sudo yum install polkit;
+sudo yum install -y polkit;
 sleep 2;
-sudo systemctl enable httpd;
-sleep 2;
-sudo systemctl start httpd;
+sudo systemctl enable --now httpd;
 sleep 2;
 sudo chown ec2-user:ec2-user /var/www/html/;
 cd /var/www/html/;
 sleep 5;
 
 ### Download WebSite's Files from S3
-
-/usr/local/bin/aws s3 sync s3://<bucketname>/ /var/www/html/;
+echo "Sincronizzazione dei file dal bucket S3..."
+/usr/local/bin/aws s3 sync s3://webbucketsite/ /var/www/html/;
 sleep 5;
-sudo unzip <Website.zip>;
+echo "Estrazione e organizzazione dei file del sito web..."
+sudo unzip -q ECommerce.zip;
 sleep 2;
-sudo mv <Website>/* .;
+sudo mv ECommerce/* .;
 sleep 2;
 
 # Cleanse var/www/html/
+echo "Pulizia della directory web..."
+sudo rm -rf ECommerce.zip;
+sudo rmdir ECommerce;
 
-sudo rm -rf <Website.zip>;
-sudo rmdir <Website>;
+echo "Script completato con successo."
 
-echo 'The user data was executed correctly!'
 ```
 
    - Update and Cleanse all the packages in the EC2 Istance
