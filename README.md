@@ -1,6 +1,7 @@
 # AWS E-commerce Workshop
 
 > ⚠️ **DISCLAIMER: Only for demo in sandbox environment**
+> The bash codes that you will find below require a running istance with SSH Connection to it, the sandbox environment doesn't allow you to access it through AWS Console.
 > This workshop is designed for learning purposes and should only be executed in a sandbox/demo AWS environment. Do not run in production environment BECAUSE IT WILL COST YOU MONEY.
 
 The "AWS E-commerce Workshop" is a hands-on lab focused on building a scalable cloud infrastructure for an e-commerce application using AWS. The primary objective is to learn how to create and manage key components such as a Virtual Private Cloud (VPC), subnets, Internet Gateways, EC2 instances, security groups, and S3 storage configuration. This project enables participants to gain essential skills for designing secure, efficient, and optimized cloud architectures for web applications, providing a solid foundation for implementing real-world e-commerce solutions.
@@ -22,14 +23,22 @@ In this lab, we'll create the network infrastructure for your e-commerce applica
 1. **Create VPC** 
    - Navigate to VPC Dashboard in AWS Console
    - Click "Create VPC"
-   - Enter CIDR block 10.0.0.0/26
-   - Enable DNS hostnames
+   - Click "VPC & More"
+   - Under "Name tag auto-generation" Insert your preferred name
+   - Enter CIDR block 10.0.0.0/28
+   - Leave "IPv6 CIDR Block" on No IPv6...
+   - Leave "Tenancy" on Default
+   - Select 1 AZ (Availability zone)
+   - Set Public Subnet to 0 and Private Subnet to 1
+   - Leave NAT Gateway on "None"
+   - Set VPC Endpoint to "None"
+   - Enable DNS hostnames & resolution
    - Add tag: Name=ecommerce-vpc
 
 ```bash
 # Create VPC
 aws ec2 create-vpc \
-    --cidr-block 10.0.0.0/16 \
+    --cidr-block 10.0.0.0/28 \
     --tag-specifications 'ResourceType=vpc,Tags=[{Key=Name,Value=ecommerce-vpc}]' \
     --instance-tenancy default \
     --enable-dns-hostnames
@@ -43,17 +52,21 @@ VPC_ID=$(aws ec2 describe-vpcs \
 
 **Validation:**
 - Check VPC creation in console
-- Verify CIDR block is 10.0.0.0/16
+- Verify CIDR block is 10.0.0.0/28
 - Confirm DNS hostnames enabled
 ```bash
 aws ec2 describe-vpcs --vpc-ids $VPC_ID
 ```
+**Delete default VPC:**
+- Navigate back to "Your VPCs" on the left side of the screen
+- Reload the list of VPCs
+- Select the Default VPC (Usually named "-")
+- Click on "Actions"
+- Click on Delete and follow the steps
 
-2. **Create Private Subnet**
-   - Within your VPC, create new subnet
-   - Use CIDR block 10.0.0.0/26
-   - Select Frankfurt (eu-central-1a)
-   - Tag: Name=ecommerce-private-subnet
+2. **Check Private Subnet**
+   - Within your VPC, Check if the subnet was created and associated with your VPC
+   - You could double check it by going in the Tags sections and seeing if there's the previously created "ecommerce-vpc" 
 
 ```bash
 # Create subnet
@@ -70,14 +83,9 @@ SUBNET_ID=$(aws ec2 describe-subnets \
     --output text)
 ```
 
-**Validation:**
-- Verify subnet creation
-- Check CIDR range
-- Confirm AZ assignment
 ```bash
 aws ec2 describe-subnets --subnet-ids $SUBNET_ID
 ```
-
 3. **Create and Attach Internet Gateway**
    - Create new Internet Gateway
    - Attach to your VPC
@@ -106,7 +114,13 @@ aws ec2 attach-internet-gateway \
 ```bash
 aws ec2 describe-internet-gateways --internet-gateway-ids $IGW_ID
 ```
-
+4. **Set Route tables**
+- Select rtb-private1-us-west-2a
+- Click on Routes
+- Click on Edit Routes
+- Click on Add Route and Select 0.0.0.0/0 (Any source)
+- Then on target click and select Internet Gateway
+- Under it you should see a drop down menu appear click on it and select your previously created IGW
 
 ## Step 2: Security Configuration
 
@@ -116,10 +130,14 @@ Configure security groups and network access controls for your e-commerce infras
 ### Step-by-Step Instructions
 
 1. **Create Security Group**
-   - Navigate to EC2 Dashboard > Security Groups
-   - Create in your VPC
+   - Navigate to VPC Dashboard > Security Groups
+   - Create the security group
    - Name: ecommerce-sg
    - Description: E-commerce security rules
+   - In inbound rules select SSH Type and on source set "Anywhere-IPv4"
+   - In inbound rules select HTTP Type and on source set "Anywhere-IPv4"
+   - Leave the Outbound rules untouched
+   - Save the security group by clicking on the "Create security group" button
 
 ```bash
 # Create security group
@@ -141,10 +159,6 @@ SG_ID=$(aws ec2 describe-security-groups \
 ```bash
 aws ec2 describe-security-groups --group-ids $SG_ID
 ```
-
-2. **Configure Security Rules**
-   - Add inbound rules for HTTP and SSH
-   - Configure outbound rules
 
 ```bash
 # Add inbound rules
@@ -183,10 +197,18 @@ Deploy and configure the EC2 instance that will host your e-commerce application
 ### Step-by-Step Instructions
 
 1. **Launch EC2 Instance**
+   - Navigate to EC2 Dashboard
+   - Click on "Launch Istance"
+   - Set the Name of the EC2 
    - Choose Amazon Linux 2 AMI
    - Select t2.micro instance type
-   - Place in private subnet
-   - Attach security group
+   - Select the key pair named "Vockey"
+   - Click on edit Network settings
+   - Select the VPC that we previously created
+   - Check if the subnet has the correct name (It should be named subnet-private1-us-west-2a)
+   - On firewall select the existing security group named ecommerce-sg
+   - Launch istance
+   
 
 ```bash
 # Create key pair for SSH access
@@ -219,10 +241,26 @@ INSTANCE_ID=$(aws ec2 describe-instances \
 ```bash
 aws ec2 describe-instances --instance-ids $INSTANCE_ID
 ```
-
-2. **Configure Elastic IP**
-   - Allocate new Elastic IP
+2. **Modify IAM role**
+   - Click on your istance
+   - Click on Istance State > "Stop"
+   - Click again on your istance
+   - Click on Actions > Security > Modify IAM Role
+   - Choose the EMR_EC2_Default role
+   - Click on Update IAM role
    - Associate with EC2 instance
+
+
+   - Leave the istance stopped
+   
+4. **Configure Elastic IP**
+   - Under Network & Security click on Elastic IPs
+   - Click on Allocate new Elastic IP
+   - Leave as it is and click on "Allocate"
+   - Select the created the Elastic Ip
+   - Click on Actions > Associate Elastic IP address
+   - Select your previously create Istance
+   - Click on Associate
 
 ```bash
 # Allocate Elastic IP
@@ -270,10 +308,11 @@ Set up S3 storage for your website files and configure necessary permissions.
 ### Step-by-Step Instructions
 
 1. **Create S3 Bucket**
-   - Choose unique bucket name
-   - Select Frankfurt region
-   - Configure basic settings
-
+   - Navigate to S3 Service
+   - Click on "Create bucket"
+   - Choose an unique bucket name
+   - Uncheck the Block All and Confirm the Yellow Warning
+   - Leave everything as it appears and select Create bucket
 ```bash
 # Create S3 bucket
 aws s3api create-bucket \
@@ -294,58 +333,26 @@ aws s3api put-bucket-versioning \
 aws s3api get-bucket-location --bucket your-ecommerce-bucket-name
 aws s3api get-bucket-versioning --bucket your-ecommerce-bucket-name
 ```
-
-2. **Configure IAM Role**
-   - Create role for EC2
-   - Attach S3 access policy
-
+2. **Configure Bucket Policies**
+   - Select your newly created bucket
+   - Navigate to the "Permission" tab
+   - Under "Bucket Policy" click on Edit
+   - Paste this Policy inside: 
 ```bash
-# Create IAM role
-cat << EOF > trust-policy.json
 {
+  "Id": "Policy1736711079745",
   "Version": "2012-10-17",
   "Statement": [
     {
+      "Sid": "Stmt1736711077903",
+      "Action": "s3:*",
       "Effect": "Allow",
-      "Principal": {
-        "Service": "ec2.amazonaws.com"
-      },
-      "Action": "sts:AssumeRole"
+      "Resource": "arn:aws:s3:::your-ecommerce-bucket-name",
+      "Principal": "*"
     }
   ]
 }
-EOF
-
-aws iam create-role \
-    --role-name ecommerce-ec2-role \
-    --assume-role-policy-document file://trust-policy.json
-
-# Create S3 access policy
-cat << EOF > s3-policy.json
-{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Effect": "Allow",
-            "Action": [
-                "s3:GetObject",
-                "s3:ListBucket"
-            ],
-            "Resource": [
-                "arn:aws:s3:::your-ecommerce-bucket-name",
-                "arn:aws:s3:::your-ecommerce-bucket-name/*"
-            ]
-        }
-    ]
-}
-EOF
-
-aws iam put-role-policy \
-    --role-name ecommerce-ec2-role \
-    --policy-name S3Access \
-    --policy-document file://s3-policy.json
-```
-
+```   
 **Validation:**
 - Check role creation
 - Verify policy attachment
@@ -360,14 +367,32 @@ Deploy the e-commerce website to your EC2 instance and configure the web server.
 
 ### Step-by-Step Instructions
 
-1. **Configure Web Server**
-   - Install Apache and PHP
-   - Set up virtual host
-   - Configure permissions
-
+1. **Configure Web File**
+   - Click on "yourbucketname"
+   - Click on "Upload"
+   - Click on "Add Files" and select your "website".zip file
+   - Click on "Upload"
+  
 ```bash
-# Connect to instance and run setup
-### User
+# Upload website files to S3
+aws s3 cp ./website-files s3://your-ecommerce-bucket-name/ --recursive
+ ```
+     
+### **NOTE: The bash code that you are about to read simplifies future steps, so unless you want to do them yourself one by one you should not skip this part.
+
+3. **Deploy Website**
+   - Enstablish an SSH Connection to your istance
+   - Open putty software
+   - Insert the public IP of your istance and set your ppk/pem file, you can find it in the aws details on the workbench page (vocareum)
+   - After you have connected to your istance, you can paste the following bash code:
+  ```bash
+  sudo nano file.sh; sudo chmod +x file.sh; sudo ./file.sh
+  ```
+   - Before pasting the following bash code inside the file.sh, **DON'T FORGET TO MODIFY THE NAME PARAMETERS OF THE S3 BUCKET AND THE WEBSITE FILE:**
+  ```bash
+#!/bin/bash
+
+### Gyovemi
 # Execute <Website> with this script
 # Edit before Running >>> <Website>
 # use 2> log.txt for troubleshoot
@@ -416,31 +441,23 @@ sleep 2;
 sudo rm -rf <Website.zip>;
 sudo rmdir <Website>;
 
-echo 'Deploy successfull'
+echo 'The user data was executed correctly!'
 ```
 
+   - Update and Cleanse all the packages in the EC2 Istance
+   - Installation of the AWS CLI v2
+   - Installing and running Apache WebServer
+   - Move you to the /var/html directory
+   - Downloading your-website.zip
+   - Unzipping and naming your website
+  
 **Validation:**
 - Check Apache status
-- Verify PHP installation
 ```bash
-ssh -i "ecommerce-key.pem" ec2-user@$PUBLIC_IP 'sudo systemctl status httpd'
+sudo systemctl status httpd
 ```
+   
 
-2. **Deploy Website Files**
-   - Upload files to S3
-   - Download to EC2
-   - Configure website
-
-```bash
-# Upload website files to S3
-aws s3 cp ./website-files s3://your-ecommerce-bucket-name/ --recursive
-
-# Download and deploy on EC2
-ssh -i "ecommerce-key.pem" ec2-user@$PUBLIC_IP << 'EOF'
-aws s3 cp s3://your-ecommerce-bucket-name/ /var/www/html/ --recursive
-sudo systemctl restart httpd
-EOF
-```
 
 **Validation:**
 - Test website access
