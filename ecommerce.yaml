@@ -190,16 +190,20 @@ Resources:
           Fn::Base64: !Sub |
             #!/bin/bash
             # Installa dipendenze
-            yum install -y httpd
+            yum install -y httpd git
 
             # Prepara ambiente
             mkdir -p /var/www/html
             chown ec2-user:ec2-user -R /var/www/html
-            cd /var/www/html
+            cd /var/www
 
             # Crea script di setup
             cat > setup.sh <<EOF
-              echo "<h1>Hello from your webserver!</h1>" > index.html
+              # Clona repository nella directory /var/www/html
+              # NOTA: in un ambiente di produzione sarebbe più opportuno
+              # effettuare anche il setup del webserver (apache2, nginx)
+              # Ai fini dello sviluppo questo approccio va più che bene.
+              git clone https://github.com/aZaChris/ECommercV2.0 /var/www/html
             EOF
 
             # Esegui setup come utente (abbassa i privilegi)
