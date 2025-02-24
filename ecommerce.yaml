@@ -254,8 +254,8 @@ Resources:
       Timeout: '60'
 
 Outputs:
-  # Regione scelta per la subnet pubblica
-  EcommercePublicSubnetRegion:
+  # AZ scelta per la subnet pubblica
+  EcommercePublicSubnetAZ:
     Value: !Ref EcommerceAZ
 
   # Indirizzo IP dell'istanza EC2
