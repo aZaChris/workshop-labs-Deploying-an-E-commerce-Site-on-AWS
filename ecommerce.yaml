@@ -1,0 +1,265 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >
+  Stack CloudFormation per progetto Ecommerce
+  Creato da Matteo Salonia (https://salonia.it) 2025-02-23
+
+# Infrastruttura
+# ===============
+# - VPC:
+#   - Subnet:
+#       Subnet Pubbliche:
+#         - PublicSubnet
+#
+#   - IGW:
+#       IGW
+#
+#   - VPCGatewayAttachment:
+#       VPCtoIGWConnection
+#
+#   - Routing Table: PublicRouteTable
+#       Routes:
+#         PublicRoute: 0.0.0.0/0 -> IGW
+#
+#       Associations:
+#         - PublicSubnetRouteTableAssociation
+#
+# - EC2:
+#   - Security Group:
+#       WebSecurityGroup
+#         Rules:
+#           - Proto:tcp  FromPort:80  ToPort:80  CIDR:0.0.0.0/0
+#           - Proto:tcp  FromPort:22  ToPort:22  CIDR:0.0.0.0/0
+#
+#   - Instances:
+#       - Web Server
+
+Parameters:
+  EcommerceAZ:
+    Type: String
+    Description: Regione usata per la subnet pubblica
+    Default: eu-central-1a
+
+  # CIDR:    10.0.0.0/22
+  # Inizio:  10.0.0.0
+  # Fine:    10.0.3.255
+  EcommerceVPCCIDR:
+    Type: String
+    Description: Range di IP da allocare per la VPC Ecommerce
+    Default: 10.0.0.0/22
+
+  # CIDR:    10.0.0.0/24
+  # Inizio:  10.0.0.0
+  # Fine:    10.0.0.255
+  PublicSubnetCIDR:
+    Type: String
+    Description: Range di IP da allocare per la subnet pubblica
+    Default: 10.0.0.0/24
+
+  # Usiamo SSM per ottenere l'ultima AMI Amazon Linux 2023 x86_64
+  AmazonLinuxAMIID:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Description: AMI da usare per l'istanza EC2
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64
+
+  EC2InstanceType:
+    Type: String
+    Description: Tipo istanza EC2
+    Default: t2.micro
+
+  # NOTA: la coppia di chiavi non può essere creata da CloudFormation!!
+  #       EC2 -> Rete e sicurezza -> Coppie di chiavi
+  KeyPairName:
+    Type: String
+    Description: Coppia di chiavi usata per l'istanza EC2
+    Default: ecommerce-key
+
+Resources:
+  # Ecommerce VPC
+  EcommerceVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref EcommerceVPCCIDR
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: Ecommerce VPC
+
+  # Internet Gateway
+  IGW:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: Ecommerce IGW
+
+  # VPC <-> IGW
+  VPCtoIGWConnection:
+    Type: AWS::EC2::VPCGatewayAttachment
+    DependsOn:
+      - IGW
+      - EcommerceVPC
+    Properties:
+      InternetGatewayId: !Ref IGW
+      VpcId: !Ref EcommerceVPC
+
+  # Tabella di routing pubblica
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    DependsOn: EcommerceVPC
+    Properties:
+      VpcId: !Ref EcommerceVPC
+      Tags:
+        - Key: Name
+          Value: Public Route Table
+
+  # Entry della route table pubblica
+  # 0.0.0.0/0 -> IGW
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn:
+      - PublicRouteTable
+      - IGW
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref IGW
+      RouteTableId: !Ref PublicRouteTable
+
+  # Subnet pubblica
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    DependsOn: EcommerceVPC
+    Properties:
+      VpcId: !Ref EcommerceVPC
+      MapPublicIpOnLaunch: true
+      CidrBlock: !Ref PublicSubnetCIDR
+      AvailabilityZone: !Ref EcommerceAZ
+      Tags:
+        - Key: Name
+          Value: Public Subnet
+
+  # Subnet pubblica <-> Tabella di routing pubblica
+  PublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    DependsOn:
+      - PublicRouteTable
+      - PublicSubnet
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet
+
+  # Security Group dell'istanza EC2
+  EcommerceWebSG:
+    Type: AWS::EC2::SecurityGroup
+    DependsOn: EcommerceVPC
+    Properties:
+      GroupName: EcommerceWebSG
+      GroupDescription: Gruppo di sicurezza web Ecommerce
+      VpcId: !Ref EcommerceVPC
+      SecurityGroupIngress:
+        # NOTA: aggiungere porta 443 qualora venga configurato un
+        # web server e i certificati SSL validi per un nome di dominio.
+        - IpProtocol: tcp
+          FromPort: '80'
+          ToPort: '80'
+          CidrIp: 0.0.0.0/0
+          # La regola sottostante non dovrebbe MAI essere usata in produzione.
+          # È consigliabile usare un "Bastion host"/"Jumpbox"
+          # o un range di indirizzi IP conosciuti.
+        - IpProtocol: tcp
+          FromPort: '22'
+          ToPort: '22'
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: EcommerceWebSG
+
+  # Template di avvio dell'istanza EC2
+  # Utile soprattutto in presenza di gruppi Auto-Scaling.
+  EcommerceWebServerLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: EcommerceWebServerLaunchTemplate
+      LaunchTemplateData:
+        ImageId: !Ref AmazonLinuxAMIID
+        InstanceType: !Ref EC2InstanceType
+        KeyName: !Ref KeyPairName
+        SecurityGroupIds:
+          - !Ref EcommerceWebSG
+        UserData:
+          Fn::Base64: !Sub |
+            #!/bin/bash
+            # Installa dipendenze
+            yum install -y httpd git
+
+            # Prepara ambiente
+            mkdir -p /var/www/html
+            chown ec2-user:ec2-user -R /var/www/html
+            cd /var/www
+
+            # Crea script di setup
+            cat > setup.sh <<EOF
+              # Clona repository nella directory /var/www/html
+              # NOTA: in un ambiente di produzione sarebbe più opportuno
+              # effettuare anche il setup del webserver (apache2, nginx)
+              # Ai fini dello sviluppo questo approccio va più che bene.
+              git clone https://github.com/aZaChris/ECommercV2.0 /var/www/html
+            EOF
+
+            # Esegui setup come utente (abbassa i privilegi)
+            # MAI eseguire script relativi a siti web e quant'altro come root
+            # In teoria potremmo anche creare un utente dedicato,
+            # ma ai fini dello sviluppo "ec2-user" va più che bene.
+            su ec2-user --command="bash setup.sh"
+
+            # Avvia Apache2 e comunica a systemd che dovrà essere
+            # avviato ad ogni avvio dell'istanza ec2
+            systemctl enable --now httpd
+
+            # Comunica a CloudFormation che l'istanza è pronta all'uso
+            /opt/aws/bin/cfn-signal -s true '${WaitHandle}'
+        TagSpecifications:
+          - ResourceType: instance
+            Tags:
+            - Key: Name
+              Value: Ecommerce Web Server
+      TagSpecifications:
+        - ResourceType: launch-template
+          Tags:
+            - Key: BelongsTo
+              Value: Ecommerce
+            - Key: Stack
+              Value: Development
+      VersionDescription: 1
+
+  # Istanza EC2
+  EcommerceWebServerInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      LaunchTemplate:
+        LaunchTemplateId: !Ref EcommerceWebServerLaunchTemplate
+        Version: !GetAtt EcommerceWebServerLaunchTemplate.LatestVersionNumber
+      SubnetId: !Ref PublicSubnet
+
+  # WaitHandle
+  WaitHandle:
+    Type: AWS::CloudFormation::WaitConditionHandle
+
+  # WaitCondition: aspetta che l'istanza EC2 ci dia un esito positivo
+  WaitCondition:
+    Type: AWS::CloudFormation::WaitCondition
+    DependsOn: EcommerceWebServerInstance
+    Properties:
+      Handle: !Ref WaitHandle
+      Timeout: '60'
+
+Outputs:
+  # AZ scelta per la subnet pubblica
+  EcommercePublicSubnetAZ:
+    Value: !Ref EcommerceAZ
+
+  # Indirizzo IP dell'istanza EC2
+  EcommerceEC2PublicIP:
+    Value: !GetAtt
+      - EcommerceWebServerInstance
+      - PublicIp
