@@ -71,3 +71,5 @@ In the **Outputs** section of the newly created CloudFormation stack, you should
 - `EcommerceEC2PublicIP`: the EC2 instance's public IPv4 address
 
 You can connect via HTTP to the EC2 instance, and you should see the demo website.
+
+![Preview](preview.png)
