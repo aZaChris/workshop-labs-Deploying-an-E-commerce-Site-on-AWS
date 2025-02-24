@@ -73,3 +73,5 @@ In the **Outputs** section of the newly created CloudFormation stack, you should
 You can connect via HTTP to the EC2 instance, and you should see the demo website.
 
 ![Preview](preview.png)
+
+You can find the website's source code [here](https://github.com/aZaChris/ECommercV2.0)
