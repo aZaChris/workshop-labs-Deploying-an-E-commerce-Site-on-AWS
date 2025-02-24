@@ -12,7 +12,7 @@ EC2 instances, Security Groups, etc.
 This project allows participants to gain essential skills for designing secure, efficient, and optimized cloud architectures for web applications,
 providing a solid foundation for implementing real-world e-commerce solutions.
 
-![Infra_Scheme](https://github.com/user-attachments/assets/4a54d053-2232-4a22-9f0e-5e118a3ea2d0)
+![Infra](infra.png)
 
 ## CloudFormation
 ### Overview
